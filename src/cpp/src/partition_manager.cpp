@@ -282,10 +282,6 @@ shared_ptr<ModifyTimingInfo> PartitionManager::remove(const Tensor &ids) {
         throw runtime_error("[PartitionManager] remove: partition_store_ is null.");
     }
 
-    if (attribute_table_ != nullptr) {
-        throw runtime_error("[PartitionManager] remove: attribute_table_ is not null  - disable remove if there is an attribute table.");
-    }
-
     if (!ids.defined() || ids.size(0) == 0) {
         if (debug_) {
             std::cout << "[PartitionManager] remove: No ids provided. Exiting." << std::endl;
