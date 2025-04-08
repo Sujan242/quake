@@ -128,48 +128,11 @@ void PartitionManager::init_partitions(
     }
 }
 
-std::shared_ptr<arrow::Table> PartitionManager::filterRowById(
-    std::shared_ptr<arrow::Table> table, 
-    int64_t target_id
-) { 
-    if(table==nullptr ) {
-        return nullptr;
-    }
-
-    auto id_column = table->GetColumnByName("id");
-    if (!id_column) {
-        std::cerr << "Column 'id' not found in table." << std::endl;
-        return nullptr;
-    }
-    
-    
-    // Create a filter expression (id == target_id)
-    arrow::Datum column_data = id_column->chunk(0);
-    arrow::Datum scalar_value = arrow::MakeScalar(target_id);
-    auto filter_expr = arrow::compute::CallFunction("equal", {column_data, scalar_value});
-    
-    if (!filter_expr.ok()) {
-        std::cerr << "Error creating filter expression: " << filter_expr.status().ToString() << std::endl;
-        return nullptr;
-    }
-    
-    // Apply the filter
-    auto result = arrow::compute::Filter(table, filter_expr.ValueOrDie());
-    if (!result.ok()) {
-        std::cerr << "Error filtering table: " << result.status().ToString() << std::endl;
-        return nullptr;
-    }
-    
-    return result.ValueOrDie().table();
-}
-
-
 shared_ptr<ModifyTimingInfo> PartitionManager::add(
     const Tensor &vectors,
     const Tensor &vector_ids,
     const Tensor &assignments,
-    bool check_uniques,
-    std::shared_ptr<arrow::Table> attributes_table
+    bool check_uniques
 ) {
     auto timing_info = std::make_shared<ModifyTimingInfo>();
 
@@ -192,14 +155,6 @@ shared_ptr<ModifyTimingInfo> PartitionManager::add(
 
     if (vectors.size(0) != vector_ids.size(0)) {
         throw runtime_error("[PartitionManager] add: mismatch in vectors.size(0) and vector_ids.size(0).");
-    }
-
-    if(attributes_table!=nullptr && attributes_table->num_rows()!= vector_ids.size(0)){
-        throw runtime_error("[PartitionManager] add: mismatch in attributes_table and vector_ids size.");
-    }
-
-    if(attributes_table!=nullptr && !attributes_table->GetColumnByName("id")){
-        throw runtime_error("[PartitionManager] add: No vector_id column in attributes_table");
     }
 
     int64_t n = vectors.size(0);
@@ -303,14 +258,11 @@ shared_ptr<ModifyTimingInfo> PartitionManager::add(
                       << " into partition " << pid << std::endl;
         }
 
-
-        std::shared_ptr<arrow::Table> filtered_table_result = filterRowById(attributes_table, id_accessor[i]);
         partition_store_->add_entries(
             pid,
             /*n_entry=*/1,
             id_ptr + i,
-            code_ptr + i * code_size_bytes,
-            filtered_table_result
+            code_ptr + i * code_size_bytes
         );
 
     }
@@ -329,6 +281,11 @@ shared_ptr<ModifyTimingInfo> PartitionManager::remove(const Tensor &ids) {
     if (!partition_store_) {
         throw runtime_error("[PartitionManager] remove: partition_store_ is null.");
     }
+
+    if (attribute_table_ != nullptr) {
+        throw runtime_error("[PartitionManager] remove: attribute_table_ is not null  - disable remove if there is an attribute table.");
+    }
+
     if (!ids.defined() || ids.size(0) == 0) {
         if (debug_) {
             std::cout << "[PartitionManager] remove: No ids provided. Exiting." << std::endl;
