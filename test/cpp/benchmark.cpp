@@ -198,7 +198,7 @@ protected:
 // ===== Quake BENCHMARK TESTS =====
 //
 
-TEST_F(QuakeSerialFlatBenchmark, Search) {
+TEST_F(QuakeSerialFlatBenchmark, Search_Without_Filtering) {
     Tensor queries = generate_data(NUM_QUERIES, DIM);
     auto search_params = std::make_shared<SearchParams>();
     search_params->k = K;
@@ -212,7 +212,47 @@ TEST_F(QuakeSerialFlatBenchmark, Search) {
     auto end = high_resolution_clock::now();
     auto elapsed = duration_cast<milliseconds>(end - start).count();
 
-    std::cout << "[Quake Flat Serial] Search time: " << elapsed << " ms" << std::endl;
+    std::cout << "[Quake Flat Serial Without Filtering] Search time: " << elapsed << " ms" << std::endl;
+    ASSERT_GT(elapsed, 0);
+}
+
+TEST_F(QuakeSerialFlatBenchmark, Search_Pre_Filtering) {
+    Tensor queries = generate_data(NUM_QUERIES, DIM);
+    auto search_params = std::make_shared<SearchParams>();
+    search_params->k = K;
+    search_params->nprobe = 1;  // not used for flat index
+    search_params->batched_scan = false;
+    search_params->price_threshold = 1;
+    search_params->filteringType = FilteringType::PRE_FILTERING;
+
+    auto start = high_resolution_clock::now();
+    for (int i = 0; i < queries.size(0); i++) {
+        auto result = index_->search(queries[i].unsqueeze(0), search_params);
+    }
+    auto end = high_resolution_clock::now();
+    auto elapsed = duration_cast<milliseconds>(end - start).count();
+
+    std::cout << "[Quake Flat Serial Pre Filtering] Search time: " << elapsed << " ms" << std::endl;
+    ASSERT_GT(elapsed, 0);
+}
+
+TEST_F(QuakeSerialFlatBenchmark, Search_Post_Filtering) {
+    Tensor queries = generate_data(NUM_QUERIES, DIM);
+    auto search_params = std::make_shared<SearchParams>();
+    search_params->k = K;
+    search_params->nprobe = 1;  // not used for flat index
+    search_params->batched_scan = false;
+    search_params->price_threshold = 1;
+    search_params->filteringType = FilteringType::POST_FILTERING;
+
+    auto start = high_resolution_clock::now();
+    for (int i = 0; i < queries.size(0); i++) {
+        auto result = index_->search(queries[i].unsqueeze(0), search_params);
+    }
+    auto end = high_resolution_clock::now();
+    auto elapsed = duration_cast<milliseconds>(end - start).count();
+
+    std::cout << "[Quake Flat Serial Post Filtering] Search time: " << elapsed << " ms" << std::endl;
     ASSERT_GT(elapsed, 0);
 }
 
