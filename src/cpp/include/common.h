@@ -38,6 +38,8 @@
 #include <arrow/table.h>
 #include <arrow/type.h>
 #include <arrow/chunked_array.h>
+#include <arrow/compute/api_vector.h>
+#include <arrow/compute/api.h>
 
 #ifdef QUAKE_USE_NUMA
 #include <numa.h>
@@ -191,7 +193,7 @@ struct SearchParams {
     float recompute_threshold = DEFAULT_RECOMPUTE_THRESHOLD;
     float initial_search_fraction = DEFAULT_INITIAL_SEARCH_FRACTION;
     int aps_flush_period_us = DEFAULT_APS_FLUSH_PERIOD_US;
-    int price_threshold = DEFAULT_PRICE_THRESHOLD;
+    arrow::compute::Expression attributes_filter;
     FilteringType filteringType = FilteringType::IN_FILTERING;
 
     SearchParams() = default;
