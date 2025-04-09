@@ -76,6 +76,7 @@ void PartitionManager::init_partitions(
         }
     }
 
+
     // Now insert the vectors into each partition
     for (int64_t i = 0; i < nlist; i++) {
         Tensor v = clustering->vectors[i];
@@ -87,7 +88,6 @@ void PartitionManager::init_partitions(
         if (v.size(0) != id.size(0)) {
             throw runtime_error("[PartitionManager] init_partitions: mismatch in v.size(0) vs id.size(0).");
         }
-
         size_t count = v.size(0);
         if (count == 0) {
             if (debug_) {

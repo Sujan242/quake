@@ -38,7 +38,6 @@ shared_ptr<BuildTimingInfo> QuakeIndex::build(Tensor x, Tensor ids, shared_ptr<I
     timing_info->d = x.size(1);
 
     auto start = std::chrono::high_resolution_clock::now();
-
     if (build_params_->nlist > 1) {
         auto s1 = std::chrono::high_resolution_clock::now();
         shared_ptr<Clustering> clustering = kmeans(
@@ -75,7 +74,6 @@ shared_ptr<BuildTimingInfo> QuakeIndex::build(Tensor x, Tensor ids, shared_ptr<I
         clustering->vectors = {x};
         clustering->vector_ids = {ids};
         clustering->attributes_tables = {attributes_table};
-
         partition_manager_->init_partitions(parent_, clustering);
     }
 

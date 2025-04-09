@@ -285,10 +285,10 @@ inline void scan_list_with_ids_l2(const float *query_vec,
                                         int list_size,
                                         int d,
                                         TopkBuffer &buffer,
-                                        bool* bitmap = nullptr) {
+                                        vector<bool> bitmap) {
     const float *vec = list_vecs;
 
-    if (bitmap == nullptr) {
+    if (bitmap.size() == 0) {
         for (int l = 0; l < list_size; l++) {
             buffer.add(sqrt(faiss::fvec_L2sqr(query_vec, vec, d)), list_ids[l]);
             vec += d;
@@ -311,7 +311,7 @@ inline void scan_list(const float *query_vec,
                             int d,
                             TopkBuffer &buffer,
                             faiss::MetricType metric = faiss::METRIC_L2,
-                            bool* bitmap = nullptr) {
+                            vector<bool> bitmap = {}) {
     // Dispatch based on metric type and whether list_ids is provided.
     if (metric == faiss::METRIC_INNER_PRODUCT) {
         if (list_ids == nullptr)

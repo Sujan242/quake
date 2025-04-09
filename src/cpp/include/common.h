@@ -191,7 +191,9 @@ struct SearchParams {
     float recompute_threshold = DEFAULT_RECOMPUTE_THRESHOLD;
     float initial_search_fraction = DEFAULT_INITIAL_SEARCH_FRACTION;
     int aps_flush_period_us = DEFAULT_APS_FLUSH_PERIOD_US;
-    int price_threshold = DEFAULT_PRICE_THRESHOLD;
+    string filter_name = "";
+    string filter_column = "";
+    arrow::Datum filter_value;
     FilteringType filteringType = FilteringType::IN_FILTERING;
 
     SearchParams() = default;

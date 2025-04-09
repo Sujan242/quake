@@ -71,7 +71,6 @@ protected:
         // Create dummy vectors and IDs
         torch::Tensor vectors = torch::randn({total_vectors_, dimension_}, torch::kFloat32);
         torch::Tensor ids = torch::arange(0, total_vectors_, torch::kInt64);
-
         // Build the QuakeIndex
         index_ = std::make_shared<QuakeIndex>();
         auto build_params = std::make_shared<IndexBuildParams>();
@@ -79,7 +78,7 @@ protected:
         build_params->metric = "l2";
         index_->build(vectors, ids, build_params);
         partition_manager_ = index_->partition_manager_;
-
+        
         // Create random queries
         queries_ = torch::randn({num_queries_, dimension_}, torch::kCPU);
     }
@@ -226,7 +225,9 @@ TEST_F(QueryCoordinatorTest, PreFilteringTest) {
     );
     auto search_params = std::make_shared<SearchParams>();
     search_params->k = 2;
-    search_params->price_threshold = 1;
+    search_params->filter_column = "price";
+    search_params->filter_name = "less_equal";
+    search_params->filter_value = arrow::Datum(1);
     search_params->filteringType = FilteringType::PRE_FILTERING;
     auto result_worker = coordinator->search(torch::randn({1, dimension_}, torch::kFloat32), search_params);
     vector<int64_t> expected_result = {0, 1};
@@ -256,7 +257,9 @@ TEST_F(QueryCoordinatorTest, PostFilteringTest) {
     );
     auto search_params = std::make_shared<SearchParams>();
     search_params->k = 2;
-    search_params->price_threshold = 1;
+    search_params->filter_column = "price";
+    search_params->filter_name = "less_equal";
+    search_params->filter_value = arrow::Datum(1);
     search_params->filteringType = FilteringType::POST_FILTERING;
     auto result_worker = coordinator->search(torch::randn({1, dimension_}, torch::kFloat32), search_params);
     vector<int64_t> expected_result = {0, 1};

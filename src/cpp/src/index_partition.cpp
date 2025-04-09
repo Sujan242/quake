@@ -67,7 +67,6 @@ void IndexPartition::append(int64_t n_entry, const idx_t* new_ids, const uint8_t
         attributes_table_ = concatenated_table.ValueOrDie();
     }
     num_vectors_ += n_entry;
-
     //
     // // insert new ids into id_to_index_
     // for (int64_t i = 0; i < n_entry; i++) {
