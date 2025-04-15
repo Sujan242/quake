@@ -122,6 +122,32 @@ TEST_F(QuakeIndexTest, BuildTest) {
     EXPECT_EQ(timing_info->d, data_vectors_.size(1));
 }
 
+// Building the for global attributes table
+TEST_F(QuakeIndexTest, BuildTestGlobalAttributesTable) {
+    QuakeIndex index;
+
+    // create build_params
+    auto build_params = std::make_shared<IndexBuildParams>();
+    build_params->nlist = nlist_;       // Use multi-partition
+    build_params->metric = "l2";
+    build_params->niter = 5;           // small kmeans iteration
+    build_params->use_global_attributes_table = true;
+
+    auto timing_info = index.build(data_vectors_, data_ids_, build_params, attributes_table);
+
+    // Check that we created partition_manager_, parent_, etc.
+    EXPECT_NE(index.partition_manager_, nullptr);
+    EXPECT_NE(index.query_coordinator_, nullptr);
+    EXPECT_NE(index.build_params_, nullptr);
+
+    // For a multi-partition scenario, we expect a parent_ that indexes centroids
+    EXPECT_NE(index.parent_, nullptr);
+
+    // Check that the timing_info fields look valid
+    EXPECT_EQ(timing_info->n_vectors, data_vectors_.size(0));
+    EXPECT_EQ(timing_info->d, data_vectors_.size(1));
+}
+
 // Building the index with nlist <= 1 => a "flat" scenario
 TEST_F(QuakeIndexTest, BuildFlatTest) {
     QuakeIndex index;

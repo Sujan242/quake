@@ -16,6 +16,7 @@ QuakeIndex::QuakeIndex(int current_level) {
     build_params_ = nullptr;
     maintenance_policy_params_ = nullptr;
     current_level_ = current_level;
+    global_attributes_table_ = nullptr;
 }
 
 QuakeIndex::~QuakeIndex() {
@@ -24,10 +25,18 @@ QuakeIndex::~QuakeIndex() {
     query_coordinator_ = nullptr;
     build_params_ = nullptr;
     maintenance_policy_params_ = nullptr;
+    global_attributes_table_ = nullptr;
+    global_attributes_table_ = nullptr;
 }
 
 shared_ptr<BuildTimingInfo> QuakeIndex::build(Tensor x, Tensor ids, shared_ptr<IndexBuildParams> build_params, std::shared_ptr<arrow::Table> attributes_table) {
     build_params_ = build_params;
+
+    if(build_params->use_global_attributes_table && attributes_table != nullptr) {
+        global_attributes_table_ = attributes_table;
+        attributes_table = nullptr; 
+    }
+
     metric_ = str_to_metric_type(build_params_->metric);
 
     x = x.contiguous().clone();

@@ -21,6 +21,7 @@ public:
     shared_ptr<PartitionManager> partition_manager_; ///< Pointer to the partition manager.
     shared_ptr<QueryCoordinator> query_coordinator_; ///< Pointer to the query coordinator.
     shared_ptr<MaintenancePolicy> maintenance_policy_; ///< Pointer to the maintenance policy.
+    shared_ptr<arrow::Table> global_attributes_table_; ///< Pointer to the attributes table.
 
     MetricType metric_; ///< Metric type for the index.
     shared_ptr<IndexBuildParams> build_params_; ///< Parameters for building the index.

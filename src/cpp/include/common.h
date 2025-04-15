@@ -144,6 +144,7 @@ struct IndexBuildParams {
     bool verbose = false;
 
     shared_ptr<IndexBuildParams> parent_params = nullptr;
+    bool use_global_attributes_table = false;
 
     IndexBuildParams() = default;
 };
