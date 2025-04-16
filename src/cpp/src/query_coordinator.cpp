@@ -658,11 +658,14 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
     
     std::unordered_set<int64_t> global_filtered_vector_ids;
     if (search_params->filteringType == FilteringType::GLOBAL_PRE_FILTERING) {
+        auto start_time = high_resolution_clock::now();
         populate_global_filtered_ids_list(global_attributes_table_, 
                         global_filtered_vector_ids, 
                         search_params->filter_name, 
                         search_params->filter_column, 
                         search_params->filter_value);
+        auto end_time = high_resolution_clock::now();
+        timing_info->filter_time_ns += duration_cast<nanoseconds>(end_time - start_time).count();
     }
 
     // Use our custom parallel_for to process queries in parallel.
@@ -771,6 +774,7 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
         all_topk_ids[q] = topk_buf->get_topk_indices();
 
         if (search_params->filteringType == FilteringType::GLOBAL_POST_FILTERING) {
+            auto start_time = high_resolution_clock::now();
             for (int i = 0; i < k; i++) {
                 filter_out_vectors_globally(
                                     global_attributes_table_,
@@ -780,6 +784,8 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
                                     search_params->filter_column, 
                                     search_params->filter_value);
             }
+            auto end_time = high_resolution_clock::now();
+            timing_info->filter_time_ns += duration_cast<nanoseconds>(end_time - start_time).count();
         }
     }, search_params->num_threads);
 
