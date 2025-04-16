@@ -285,19 +285,29 @@ inline void scan_list_with_ids_l2(const float *query_vec,
                                         int list_size,
                                         int d,
                                         TopkBuffer &buffer,
-                                       const vector<bool> &bitmap) {
+                                       const vector<bool> &bitmap,
+                                       const std::unordered_set<int64_t> &global_filtered_vector_ids) {
     const float *vec = list_vecs;
 
-    if (bitmap.size() == 0) {
-        for (int l = 0; l < list_size; l++) {
-            buffer.add(sqrt(faiss::fvec_L2sqr(query_vec, vec, d)), list_ids[l]);
-            vec += d;
-        }
-    } else {
+    if (bitmap.size() > 0) {
         for (int l = 0; l < list_size; l++) {
             if (bitmap[l]) {
                 buffer.add(sqrt(faiss::fvec_L2sqr(query_vec, vec, d)), list_ids[l]);
             }
+            vec += d;
+        }
+    }
+    else if (global_filtered_vector_ids.size() > 0) {
+        for (int l = 0; l < list_size; l++) {
+            if (global_filtered_vector_ids.count(list_ids[l])) {
+                buffer.add(sqrt(faiss::fvec_L2sqr(query_vec, vec, d)), list_ids[l]);
+            }
+            vec += d;
+        }
+    }
+    else {
+        for (int l = 0; l < list_size; l++) {
+            buffer.add(sqrt(faiss::fvec_L2sqr(query_vec, vec, d)), list_ids[l]);
             vec += d;
         }
     }
@@ -311,7 +321,8 @@ inline void scan_list(const float *query_vec,
                             int d,
                             TopkBuffer &buffer,
                             faiss::MetricType metric = faiss::METRIC_L2,
-                            const vector<bool> &bitmap = {}) {
+                            const vector<bool> &bitmap = {},
+                            const std::unordered_set<int64_t> &global_filtered_vector_ids = {}) {
     // Dispatch based on metric type and whether list_ids is provided.
     if (metric == faiss::METRIC_INNER_PRODUCT) {
         if (list_ids == nullptr)
@@ -322,7 +333,7 @@ inline void scan_list(const float *query_vec,
         if (list_ids == nullptr)
             scan_list_no_ids_l2(query_vec, list_vecs, list_size, d, buffer);
         else
-            scan_list_with_ids_l2(query_vec, list_vecs, list_ids, list_size, d, buffer, bitmap);
+            scan_list_with_ids_l2(query_vec, list_vecs, list_ids, list_size, d, buffer, bitmap, global_filtered_vector_ids);
     }
 }
 

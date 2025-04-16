@@ -587,6 +587,32 @@ void filter_out_vectors_globally(
     list_dist.resize(write_index);
 }
 
+void populate_global_filtered_ids_list(
+                        const std::shared_ptr<arrow::Table> global_attributes_table_, 
+                        std::unordered_set<int64_t> &filtered_vector_ids_list, 
+                        string &filter_name,
+                        string &filter_column,
+                        arrow::Datum &filter_value) {
+
+    std::shared_ptr<arrow::ChunkedArray> filter_attribute_column = global_attributes_table_->GetColumnByName(filter_column);
+
+    if (!filter_attribute_column) {
+        throw std::runtime_error("Invalid column name in the filter");
+    }
+
+    auto id_col = global_attributes_table_->GetColumnByName("id");
+
+    auto mask = arrow::compute::CallFunction(filter_name, {filter_attribute_column->chunk(0), filter_value});
+    auto bool_mask = std::static_pointer_cast<arrow::BooleanArray>(mask->make_array());
+    auto id_values = std::static_pointer_cast<arrow::Int64Array>(id_col->chunk(0));
+
+    for (int64_t i = 0; i < bool_mask->length(); ++i) {
+        if (bool_mask->Value(i)) {
+            filtered_vector_ids_list.insert(id_values->Value(i));
+        }
+    }
+}
+
 shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partition_ids_to_scan,
                                                          shared_ptr<SearchParams> search_params, shared_ptr<arrow::Table> global_attributes_table_) {
     if (!partition_manager_) {
@@ -629,6 +655,15 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
     // Allocate per-query result vectors.
     vector<vector<float>> all_topk_dists(num_queries);
     vector<vector<int64_t>> all_topk_ids(num_queries);
+    
+    std::unordered_set<int64_t> global_filtered_vector_ids;
+    if (search_params->filteringType == FilteringType::GLOBAL_PRE_FILTERING) {
+        populate_global_filtered_ids_list(global_attributes_table_, 
+                        global_filtered_vector_ids, 
+                        search_params->filter_name, 
+                        search_params->filter_column, 
+                        search_params->filter_value);
+    }
 
     // Use our custom parallel_for to process queries in parallel.
     parallel_for<int64_t>(0, num_queries, [&](int64_t q) {
@@ -667,10 +702,10 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
                             partition_manager_->partition_store_->partitions_[pi]->attributes_table_;
             int64_t list_size = partition_manager_->partition_store_->list_size(pi);
             
-            std::vector<bool> bitmap = {};
+            std::vector<bool> local_bitmap = {};
 
             if (search_params->filteringType == FilteringType::LOCAL_PRE_FILTERING) {
-                bitmap = create_bitmap(partition_attributes_table, 
+                local_bitmap = create_bitmap(partition_attributes_table, 
                                         list_ids, 
                                         list_size, 
                                         search_params->filter_name, 
@@ -685,7 +720,8 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
                       dimension,
                       *topk_buf,
                       metric_,
-                      bitmap);
+                      local_bitmap,
+                      global_filtered_vector_ids);
             if (search_params->filteringType == FilteringType::LOCAL_POST_FILTERING) {
                 
                 int buffer_size = topk_buf->curr_offset_;
