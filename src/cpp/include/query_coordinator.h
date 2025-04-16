@@ -103,7 +103,7 @@ public:
     * @param search_params Shared pointer to search parameters.
     * @return Shared pointer to the final SearchResult.
     */
-    shared_ptr<SearchResult> search(Tensor x, shared_ptr<SearchParams> search_params);
+    shared_ptr<SearchResult> search(Tensor x, shared_ptr<SearchParams> search_params, shared_ptr<arrow::Table> global_attributes_table_ = nullptr);
 
     /**
      * @brief Performs a scan on the specified partitions.
@@ -115,7 +115,7 @@ public:
      * @param search_params Shared pointer to search parameters.
      * @return Shared pointer to the aggregated SearchResult.
      */
-    shared_ptr<SearchResult> scan_partitions(Tensor x, Tensor partition_ids, shared_ptr<SearchParams> search_params);
+    shared_ptr<SearchResult> scan_partitions(Tensor x, Tensor partition_ids, shared_ptr<SearchParams> search_params, shared_ptr<arrow::Table> global_attributes_table_ = nullptr);
 
     /**
      * @brief Executes a serial scan over the provided partitions.
@@ -127,7 +127,7 @@ public:
      * @param search_params Shared pointer to search parameters.
      * @return Shared pointer to the SearchResult.
      */
-    shared_ptr<SearchResult> serial_scan(Tensor x, Tensor partition_ids, shared_ptr<SearchParams> search_params);
+    shared_ptr<SearchResult> serial_scan(Tensor x, Tensor partition_ids, shared_ptr<SearchParams> search_params, shared_ptr<arrow::Table> global_attributes_table_ = nullptr);
 
     /**
      * @brief Executes a batched serial scan for multiple queries.

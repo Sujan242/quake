@@ -546,8 +546,49 @@ void filter_out_vectors(const std::shared_ptr<arrow::Table> attributes_table,
     }
 }
 
+void filter_out_vectors_globally(
+                        const std::shared_ptr<arrow::Table> global_attributes_table_,
+                        vector<float> &list_dist,
+                        vector<int64_t> &list_ids,
+                        string &filter_name,
+                        string &filter_column,
+                        arrow::Datum &filter_value) {
+    std::shared_ptr<arrow::ChunkedArray> filter_attribute_column = global_attributes_table_->GetColumnByName(filter_column);
+
+    if (!filter_attribute_column) {
+        throw std::runtime_error("Invalid column name in the filter");
+    }
+
+    auto id_col = global_attributes_table_->GetColumnByName("id");
+
+    auto mask = arrow::compute::CallFunction(filter_name, {filter_attribute_column->chunk(0), filter_value});
+
+    auto bool_mask = std::static_pointer_cast<arrow::BooleanArray>(mask->make_array());
+    auto id_values = std::static_pointer_cast<arrow::Int64Array>(id_col->chunk(0));
+
+
+    std::unordered_set<int64_t> passed_ids;
+
+    for (int64_t i = 0; i < bool_mask->length(); ++i) {
+        if (bool_mask->Value(i)) {
+            passed_ids.insert(id_values->Value(i));
+        }
+    }
+
+    int write_index = 0;
+    for(int i=0; i < list_ids.size(); i++) {
+        if (passed_ids.count(list_ids[i])) {
+            list_ids[write_index] = list_ids[i];
+            list_dist[write_index] = list_dist[i];
+            ++write_index;
+        }
+    }
+    list_ids.resize(write_index);
+    list_dist.resize(write_index);
+}
+
 shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partition_ids_to_scan,
-                                                         shared_ptr<SearchParams> search_params) {
+                                                         shared_ptr<SearchParams> search_params, shared_ptr<arrow::Table> global_attributes_table_) {
     if (!partition_manager_) {
         throw std::runtime_error("[QueryCoordinator::serial_scan] partition_manager_ is null.");
     }
@@ -628,7 +669,7 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
             
             std::vector<bool> bitmap = {};
 
-            if (search_params->filteringType == FilteringType::PRE_FILTERING) {
+            if (search_params->filteringType == FilteringType::LOCAL_PRE_FILTERING) {
                 bitmap = create_bitmap(partition_attributes_table, 
                                         list_ids, 
                                         list_size, 
@@ -645,7 +686,7 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
                       *topk_buf,
                       metric_,
                       bitmap);
-            if (search_params->filteringType == FilteringType::POST_FILTERING) {
+            if (search_params->filteringType == FilteringType::LOCAL_POST_FILTERING) {
                 
                 int buffer_size = topk_buf->curr_offset_;
                 filter_out_vectors(partition_attributes_table, 
@@ -683,7 +724,21 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
         // Retrieve the top-k results for query q.
         all_topk_dists[q] = topk_buf->get_topk();
         all_topk_ids[q] = topk_buf->get_topk_indices();
+
+        if (search_params->filteringType == FilteringType::GLOBAL_POST_FILTERING) {
+            for (int i = 0; i < k; i++) {
+                filter_out_vectors_globally(
+                                    global_attributes_table_,
+                                    all_topk_dists[q],
+                                    all_topk_ids[q],
+                                    search_params->filter_name, 
+                                    search_params->filter_column, 
+                                    search_params->filter_value);
+            }
+        }
     }, search_params->num_threads);
+
+
 
     // Aggregate per-query results into output tensors.
     auto ret_ids_accessor = ret_ids.accessor<int64_t, 2>();
@@ -711,7 +766,7 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
     search_result->timing_info = timing_info;
     return search_result;
 }
-shared_ptr<SearchResult> QueryCoordinator::search(Tensor x, shared_ptr<SearchParams> search_params) {
+shared_ptr<SearchResult> QueryCoordinator::search(Tensor x, shared_ptr<SearchParams> search_params, shared_ptr<arrow::Table> global_attributes_table_) {
     if (!partition_manager_) {
         throw std::runtime_error("[QueryCoordinator::search] partition_manager_ is null.");
     }
@@ -748,7 +803,7 @@ shared_ptr<SearchResult> QueryCoordinator::search(Tensor x, shared_ptr<SearchPar
         parent_timing_info = parent_search_result->timing_info;
     }
 
-    auto search_result = scan_partitions(x, partition_ids_to_scan, search_params);
+    auto search_result = scan_partitions(x, partition_ids_to_scan, search_params, global_attributes_table_);
     
     search_result->timing_info->parent_info = parent_timing_info;
 
@@ -760,7 +815,7 @@ shared_ptr<SearchResult> QueryCoordinator::search(Tensor x, shared_ptr<SearchPar
 }
 
 shared_ptr<SearchResult> QueryCoordinator::scan_partitions(Tensor x, Tensor partition_ids,
-                                                           shared_ptr<SearchParams> search_params) {
+                                                           shared_ptr<SearchParams> search_params, shared_ptr<arrow::Table> global_attributes_table_) {
     if (workers_initialized_) {
         if (debug_) std::cout << "[QueryCoordinator::scan_partitions] Using worker-based scan." << std::endl;
         return worker_scan(x, partition_ids, search_params);
@@ -770,7 +825,7 @@ shared_ptr<SearchResult> QueryCoordinator::scan_partitions(Tensor x, Tensor part
             return batched_serial_scan(x, partition_ids, search_params);
         } else {
             if (debug_) std::cout << "[QueryCoordinator::scan_partitions] Using serial scan." << std::endl;
-            return serial_scan(x, partition_ids, search_params);
+            return serial_scan(x, partition_ids, search_params, global_attributes_table_);
         }
     }
 }

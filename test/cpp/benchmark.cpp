@@ -216,7 +216,7 @@ TEST_F(QuakeSerialFlatBenchmark, Search_Without_Filtering) {
     ASSERT_GT(elapsed, 0);
 }
 
-TEST_F(QuakeSerialFlatBenchmark, Search_Pre_Filtering) {
+TEST_F(QuakeSerialFlatBenchmark, Search_LOCAL_PRE_FILTERING) {
     Tensor queries = generate_data(100, DIM);
     auto search_params = std::make_shared<SearchParams>();
     search_params->k = 10;
@@ -225,7 +225,7 @@ TEST_F(QuakeSerialFlatBenchmark, Search_Pre_Filtering) {
     search_params->filter_column = "price";
     search_params->filter_name = "less_equal";
     search_params->filter_value = arrow::Datum(50000);
-    search_params->filteringType = FilteringType::PRE_FILTERING;
+    search_params->filteringType = FilteringType::LOCAL_PRE_FILTERING;
 
     auto start = high_resolution_clock::now();
     for (int i = 0; i < queries.size(0); i++) {
@@ -238,7 +238,7 @@ TEST_F(QuakeSerialFlatBenchmark, Search_Pre_Filtering) {
     ASSERT_GT(elapsed, 0);
 }
 
-TEST_F(QuakeSerialFlatBenchmark, Search_Post_Filtering) {
+TEST_F(QuakeSerialFlatBenchmark, Search_LOCAL_POST_FILTERING) {
 
     Tensor queries = generate_data(100, DIM);
     auto search_params = std::make_shared<SearchParams>();
@@ -248,7 +248,7 @@ TEST_F(QuakeSerialFlatBenchmark, Search_Post_Filtering) {
     search_params->filter_column = "price";
     search_params->filter_name = "less_equal";
     search_params->filter_value = arrow::Datum(50000);
-    search_params->filteringType = FilteringType::POST_FILTERING;
+    search_params->filteringType = FilteringType::LOCAL_POST_FILTERING;
 
     auto start = high_resolution_clock::now();
     for (int i = 0; i < queries.size(0); i++) {

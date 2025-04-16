@@ -173,8 +173,10 @@ inline string metric_type_to_str(faiss::MetricType metric) {
 }
 
 enum class FilteringType {
-    PRE_FILTERING,
-    POST_FILTERING,
+    LOCAL_PRE_FILTERING,
+    LOCAL_POST_FILTERING,
+    GLOBAL_PRE_FILTERING,
+    GLOBAL_POST_FILTERING,
     IN_FILTERING
 };
 

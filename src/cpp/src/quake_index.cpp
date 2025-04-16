@@ -26,7 +26,6 @@ QuakeIndex::~QuakeIndex() {
     build_params_ = nullptr;
     maintenance_policy_params_ = nullptr;
     global_attributes_table_ = nullptr;
-    global_attributes_table_ = nullptr;
 }
 
 shared_ptr<BuildTimingInfo> QuakeIndex::build(Tensor x, Tensor ids, shared_ptr<IndexBuildParams> build_params, std::shared_ptr<arrow::Table> attributes_table) {
@@ -103,7 +102,7 @@ QuakeIndex::search(Tensor x, shared_ptr<SearchParams> search_params) {
     if (!query_coordinator_) {
         throw std::runtime_error("[QuakeIndex::search()] No query coordinator. Did you build the index?");
     }
-    return query_coordinator_->search(x, search_params);
+    return query_coordinator_->search(x, search_params, global_attributes_table_);
 }
 
 Tensor QuakeIndex::get_ids() {

@@ -228,7 +228,7 @@ TEST_F(QueryCoordinatorTest, PreFilteringTest) {
     search_params->filter_column = "price";
     search_params->filter_name = "less_equal";
     search_params->filter_value = arrow::Datum(1);
-    search_params->filteringType = FilteringType::PRE_FILTERING;
+    search_params->filteringType = FilteringType::LOCAL_PRE_FILTERING;
     auto result_worker = coordinator->search(torch::randn({1, dimension_}, torch::kFloat32), search_params);
     vector<int64_t> expected_result = {0, 1};
     ASSERT_TRUE(result_worker != nullptr);
@@ -239,7 +239,7 @@ TEST_F(QueryCoordinatorTest, PreFilteringTest) {
     ASSERT_EQ(expected_result, result_worker_vector);
 }
 
-TEST_F(QueryCoordinatorTest, PostFilteringTest) {
+TEST_F(QueryCoordinatorTest, LocalPostFilteringTest) {
     auto index = std::make_shared<QuakeIndex>();
     auto build_params = std::make_shared<IndexBuildParams>();
     build_params->nlist = 1;
@@ -260,7 +260,7 @@ TEST_F(QueryCoordinatorTest, PostFilteringTest) {
     search_params->filter_column = "price";
     search_params->filter_name = "less_equal";
     search_params->filter_value = arrow::Datum(1);
-    search_params->filteringType = FilteringType::POST_FILTERING;
+    search_params->filteringType = FilteringType::LOCAL_POST_FILTERING;
     auto result_worker = coordinator->search(torch::randn({1, dimension_}, torch::kFloat32), search_params);
     vector<int64_t> expected_result = {0, 1};
     ASSERT_TRUE(result_worker != nullptr);
@@ -269,6 +269,41 @@ TEST_F(QueryCoordinatorTest, PostFilteringTest) {
     std::vector<int64_t> result_worker_vector(result_worker->ids.data<int64_t>(), result_worker->ids.data<int64_t>() + result_worker->ids.numel());
     sort(result_worker_vector.begin(), result_worker_vector.end());
     ASSERT_EQ(expected_result, result_worker_vector);
+}
+
+TEST_F(QueryCoordinatorTest, GlobalPostFilteringTest) {
+    auto index = std::make_shared<QuakeIndex>();
+    auto build_params = std::make_shared<IndexBuildParams>();
+    build_params->nlist = 1;
+    build_params->metric = "l2";
+    build_params->use_global_attributes_table = true;
+    int64_t num_vectors = 10;
+    auto data_vectors = generate_random_data(num_vectors, dimension_);
+    auto data_ids = generate_sequential_ids(num_vectors, 0);
+    auto attributes_table = generate_data_frame(num_vectors, data_ids);
+    index->build(data_vectors, data_ids, build_params, attributes_table);
+    auto coordinator = std::make_shared<QueryCoordinator>(
+        index->parent_,
+        index->partition_manager_,
+        nullptr,
+        faiss::METRIC_L2
+    );
+    auto search_params = std::make_shared<SearchParams>();
+    search_params->k = 5;
+    search_params->filter_column = "price";
+    search_params->filter_name = "less_equal";
+    search_params->filter_value = arrow::Datum(5);
+    search_params->filteringType = FilteringType::GLOBAL_POST_FILTERING;
+    auto result_worker = coordinator->search(torch::randn({1, dimension_}, torch::kFloat32), search_params, index->global_attributes_table_);
+    vector<int64_t> expected_result = {0, 1};
+    ASSERT_TRUE(result_worker != nullptr);
+    ASSERT_EQ(result_worker->ids.sizes(), (std::vector<int64_t>{1, 5}));
+    ASSERT_EQ(result_worker->distances.sizes(), (std::vector<int64_t>{1, 5}));
+    std::vector<int64_t> result_worker_vector(result_worker->ids.data<int64_t>(), result_worker->ids.data<int64_t>() + result_worker->ids.numel());
+    sort(result_worker_vector.begin(), result_worker_vector.end());
+    for (int64_t id : result_worker_vector) {
+        ASSERT_TRUE(id == -1 || id <= 5) << "Unexpected id: " << id;
+    }
 }
 
 TEST_F(QueryCoordinatorTest, FlatWorkerScan) {
