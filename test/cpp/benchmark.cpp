@@ -206,13 +206,16 @@ TEST_F(QuakeSerialFlatBenchmark, Search_Without_Filtering) {
     search_params->batched_scan = false;
 
     auto start = high_resolution_clock::now();
+    auto total_scan_time = 0;
     for (int i = 0; i < queries.size(0); i++) {
         auto result = index_->search(queries[i].unsqueeze(0), search_params);
+        total_scan_time += result->timing_info->scan_time_ns;
     }
     auto end = high_resolution_clock::now();
     auto elapsed = duration_cast<milliseconds>(end - start).count();
 
     std::cout << "[Quake Flat Serial Without Filtering] Search time: " << elapsed << " ms" << std::endl;
+    std::cout<<"[Quake Flat Serial Without Filtering] Scan Time: " << total_scan_time/1000000 << " ms" << std::endl;
     ASSERT_GT(elapsed, 0);
 }
 
@@ -226,15 +229,22 @@ TEST_F(QuakeSerialFlatBenchmark, Search_LOCAL_PRE_FILTERING) {
     search_params->filter_name = "less_equal";
     search_params->filter_value = arrow::Datum(50000);
     search_params->filteringType = FilteringType::LOCAL_PRE_FILTERING;
+    auto total_scan_time = 0;
+    auto total_filter_time = 0;
 
     auto start = high_resolution_clock::now();
     for (int i = 0; i < queries.size(0); i++) {
         auto result = index_->search(queries[i].unsqueeze(0), search_params);
+        total_scan_time += result->timing_info->scan_time_ns;
+        total_filter_time += result->timing_info->filter_time_ns;
     }
     auto end = high_resolution_clock::now();
     auto elapsed = duration_cast<milliseconds>(end - start).count();
 
     std::cout << "[Quake Flat Serial Pre Filtering] Search time: " << elapsed << " ms" << std::endl;
+    std::cout << "[Quake Flat Serial Pre Filtering] Scan Time: " << total_scan_time/1000000 << " ms" << std::endl;
+    std::cout << "[Quake Flat Serial Pre Filtering] Filter Time: " << total_filter_time/1000000 << " ms" << std::endl;
+
     ASSERT_GT(elapsed, 0);
 }
 
@@ -249,15 +259,21 @@ TEST_F(QuakeSerialFlatBenchmark, Search_LOCAL_POST_FILTERING) {
     search_params->filter_name = "less_equal";
     search_params->filter_value = arrow::Datum(50000);
     search_params->filteringType = FilteringType::LOCAL_POST_FILTERING;
+    auto total_scan_time = 0;
+    auto total_filter_time = 0;
 
     auto start = high_resolution_clock::now();
     for (int i = 0; i < queries.size(0); i++) {
         auto result = index_->search(queries[i].unsqueeze(0), search_params);
+        total_scan_time += result->timing_info->scan_time_ns;
+        total_filter_time += result->timing_info->filter_time_ns;
     }
     auto end = high_resolution_clock::now();
     auto elapsed = duration_cast<milliseconds>(end - start).count();
 
     std::cout << "[Quake Flat Serial Post Filtering] Search time: " << elapsed << " ms" << std::endl;
+    std::cout << "[Quake Flat Serial Post Filtering] Scan Time: " << total_scan_time/1000000 << " ms" << std::endl;
+    std::cout << "[Quake Flat Serial Post Filtering] Filter Time: " << total_filter_time/1000000 << " ms" << std::endl;
     ASSERT_GT(elapsed, 0);
 }
 

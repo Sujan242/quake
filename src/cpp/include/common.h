@@ -244,6 +244,8 @@ struct SearchTimingInfo {
     int64_t job_wait_time_ns; ///< Time spent waiting for jobs to complete in nanoseconds.
     int64_t result_aggregate_time_ns; ///< Time spent on aggregating results in nanoseconds.
     int64_t total_time_ns; ///< Total time spent in nanoseconds.
+    int scan_time_ns; ///< Scan time in microseconds.
+    int filter_time_ns;
 };
 
 /**

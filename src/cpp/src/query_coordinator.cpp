@@ -705,14 +705,18 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
             std::vector<bool> local_bitmap = {};
 
             if (search_params->filteringType == FilteringType::LOCAL_PRE_FILTERING) {
+                auto start_time = high_resolution_clock::now();
                 local_bitmap = create_bitmap(partition_attributes_table, 
                                         list_ids, 
                                         list_size, 
                                         search_params->filter_name, 
                                         search_params->filter_column, 
                                         search_params->filter_value);
+                auto end_time = high_resolution_clock::now();
+                timing_info->filter_time_ns += duration_cast<nanoseconds>(end_time - start_time).count();
             }
 
+            auto start_time = high_resolution_clock::now();
             scan_list(query_vec,
                       list_vectors,
                       list_ids,
@@ -722,8 +726,11 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
                       metric_,
                       local_bitmap,
                       global_filtered_vector_ids);
+            auto end_time = high_resolution_clock::now();
+            timing_info->scan_time_ns += duration_cast<nanoseconds>(end_time - start_time).count();
             if (search_params->filteringType == FilteringType::LOCAL_POST_FILTERING) {
                 
+                auto start_time = high_resolution_clock::now();
                 int buffer_size = topk_buf->curr_offset_;
                 filter_out_vectors(partition_attributes_table, 
                                     *topk_buf, 
@@ -731,6 +738,8 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
                                     search_params->filter_name, 
                                     search_params->filter_column, 
                                     search_params->filter_value);
+                auto end_time = high_resolution_clock::now();
+                timing_info->filter_time_ns += duration_cast<nanoseconds>(end_time - start_time).count();
             }
 
             float curr_radius = topk_buf->get_kth_distance();
