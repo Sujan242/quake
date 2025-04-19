@@ -657,7 +657,7 @@ shared_ptr<SearchResult> QueryCoordinator::serial_scan(Tensor x, Tensor partitio
     vector<vector<int64_t>> all_topk_ids(num_queries);
     
     std::unordered_set<int64_t> global_filtered_vector_ids;
-    if (search_params->filteringType == FilteringType::GLOBAL_PRE_FILTERING) {
+    if (search_params->filteringType == FilteringType::GLOBAL_PRE_FILTERING || search_params->filteringType == FilteringType::BRUTE_FORCE_FILTERING) {
         auto start_time = high_resolution_clock::now();
         populate_global_filtered_ids_list(global_attributes_table_, 
                         global_filtered_vector_ids, 
@@ -828,8 +828,9 @@ shared_ptr<SearchResult> QueryCoordinator::search(Tensor x, shared_ptr<SearchPar
     auto start = high_resolution_clock::now();
 
     // if there is no parent, then the coordinator is operating on a flat index and we need to scan all partitions
+    // or, for brute force filtering, we need to scan all partitions
     Tensor partition_ids_to_scan;
-    if (parent_ == nullptr) {
+    if (parent_ == nullptr || search_params->filteringType == FilteringType::BRUTE_FORCE_FILTERING) {
         // scan all partitions for each query
         partition_ids_to_scan = torch::arange(partition_manager_->nlist(), torch::kInt64);
     } else {
