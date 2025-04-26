@@ -12,6 +12,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <fstream>
 #include <thread>
 
 #include <torch/torch.h>
@@ -52,7 +53,7 @@ static std::shared_ptr<arrow::Table> generate_data_frame(int64_t num_vectors, to
 
     // Append values to the builders
     for (int64_t i = 0; i < num_vectors; i++) {
-        price_builder.Append(static_cast<double>(i) * 1.5); // Price column
+        price_builder.Append(static_cast<double>(i)); // Price column
         id_builder.Append(ids[i].item<int64_t>());          // ID column from the input tensor
     }
 
@@ -92,6 +93,9 @@ protected:
         auto build_params = std::make_shared<IndexBuildParams>();
         build_params->nlist = 1;      // flat index
         build_params->metric = "l2";
+        
+        // Uncomment this to run the test for global filters and brute force
+        // build_params->use_global_attributes_table = true;
         index_->build(data_, ids_, build_params, attributes_table_);
     }
 };
@@ -154,7 +158,7 @@ protected:
         build_params->metric = "l2";
         build_params->niter = 3;
         build_params->num_workers = N_WORKERS;
-        index_->build(data_, ids_, build_params,attributes_table_);
+        index_->build(data_, ids_, build_params, attributes_table_);
     }
 };
 
@@ -197,6 +201,188 @@ protected:
 //
 // ===== Quake BENCHMARK TESTS =====
 //
+
+TEST_F(QuakeSerialFlatBenchmark, GraphForLocalPre) {
+    // Force "serial_scan" by disabling batched_scan
+    Tensor queries = generate_data(100, DIM);
+    auto search_params = std::make_shared<SearchParams>();
+    search_params->k = 10;
+    search_params->recall_target = 0.9;  // not used for flat index
+    search_params->batched_scan = false;
+    search_params->filter_column = "price";
+    search_params->filter_name = "less_equal";
+    
+    search_params->filteringType = FilteringType::LOCAL_PRE_FILTERING;
+    auto total_scan_time = 0;
+    auto total_filter_time = 0;
+
+    auto start = high_resolution_clock::now();
+    std::ofstream outfile("local_pre_graph.txt");
+    for(int filter_price = 0; filter_price <= 100000; filter_price += 100) {
+        total_scan_time = 0;
+        for (int i = 0; i < queries.size(0); i++) {
+            search_params->filter_value = arrow::Datum(filter_price);
+            auto result = index_->search(queries[i].unsqueeze(0), search_params);
+            total_scan_time += result->timing_info->scan_time_ns;
+            total_filter_time += result->timing_info->filter_time_ns;
+        }
+        // std::cout << "Filter Value: " << filter_price << std::endl;
+        // std::cout << "Scan Time" << total_scan_time/1000000 << " ms" << std::endl;
+        // std::cout<< total_scan_time / 1000000 << std::endl;
+        outfile << total_scan_time/1000000 << std::endl;
+    }
+    outfile.close();
+    auto end = high_resolution_clock::now();
+    auto elapsed = duration_cast<milliseconds>(end - start).count();
+
+    ASSERT_GT(elapsed, 0);
+}
+
+TEST_F(QuakeSerialFlatBenchmark, GraphForLocalPost) {
+    // Force "serial_scan" by disabling batched_scan
+    Tensor queries = generate_data(100, DIM);
+    auto search_params = std::make_shared<SearchParams>();
+    search_params->k = 10;
+    search_params->recall_target = 0.9;  // not used for flat index
+    search_params->batched_scan = false;
+    search_params->filter_column = "price";
+    search_params->filter_name = "less_equal";
+    
+    search_params->filteringType = FilteringType::LOCAL_POST_FILTERING;
+    auto total_scan_time = 0;
+    auto total_filter_time = 0;
+
+    auto start = high_resolution_clock::now();
+    std::ofstream outfile("local_post_graph.txt");
+    for(int filter_price = 0; filter_price <= 100000; filter_price += 100) {
+        total_scan_time = 0;
+        for (int i = 0; i < queries.size(0); i++) {
+            search_params->filter_value = arrow::Datum(filter_price);
+            auto result = index_->search(queries[i].unsqueeze(0), search_params);
+            total_scan_time += result->timing_info->scan_time_ns;
+            total_filter_time += result->timing_info->filter_time_ns;
+        }
+        // std::cout << "Filter Value: " << filter_price << std::endl;
+        // std::cout << "Scan Time" << total_scan_time/1000000 << " ms" << std::endl;
+        // std::cout<< total_scan_time / 1000000 << std::endl;
+        outfile << total_scan_time/1000000 << std::endl;
+    }
+    outfile.close();
+    auto end = high_resolution_clock::now();
+    auto elapsed = duration_cast<milliseconds>(end - start).count();
+
+    ASSERT_GT(elapsed, 0);
+}
+
+TEST_F(QuakeSerialFlatBenchmark, GraphForBruteForce) {
+// Force "serial_scan" by disabling batched_scan
+    Tensor queries = generate_data(100, DIM);
+    auto search_params = std::make_shared<SearchParams>();
+    search_params->k = 10;
+    search_params->recall_target = 0.9;  // not used for flat index
+    search_params->batched_scan = false;
+    search_params->filter_column = "price";
+    search_params->filter_name = "less_equal";
+    
+    search_params->filteringType = FilteringType::BRUTE_FORCE_FILTERING;
+    auto total_scan_time = 0;
+    auto total_filter_time = 0;
+
+    auto start = high_resolution_clock::now();
+    std::ofstream outfile("brute_force_graph.txt");
+    for(int filter_price = 0; filter_price <= 100000; filter_price += 100) {
+        total_scan_time = 0;
+        for (int i = 0; i < queries.size(0); i++) {
+            search_params->filter_value = arrow::Datum(filter_price);
+            auto result = index_->search(queries[i].unsqueeze(0), search_params);
+            total_scan_time += result->timing_info->scan_time_ns;
+            total_filter_time += result->timing_info->filter_time_ns;
+        }
+        // std::cout << "Filter Value: " << filter_price << std::endl;
+        // std::cout << "Scan Time" << total_scan_time/1000000 << " ms" << std::endl;
+        // std::cout<< total_scan_time / 1000000 << std::endl;
+        outfile << total_scan_time/1000000 << std::endl;
+    }
+    outfile.close();
+    auto end = high_resolution_clock::now();
+    auto elapsed = duration_cast<milliseconds>(end - start).count();
+
+    ASSERT_GT(elapsed, 0);
+}
+
+TEST_F(QuakeSerialFlatBenchmark, GraphForGlobalPre) {
+    // Force "serial_scan" by disabling batched_scan
+    Tensor queries = generate_data(100, DIM);
+    auto search_params = std::make_shared<SearchParams>();
+    search_params->k = 10;
+    search_params->recall_target = 0.9;  // not used for flat index
+    search_params->batched_scan = false;
+    
+    search_params->filter_column = "price";
+    search_params->filter_name = "less_equal";
+    
+    search_params->filteringType = FilteringType::GLOBAL_PRE_FILTERING;
+    auto total_scan_time = 0;
+    auto total_filter_time = 0;
+
+    auto start = high_resolution_clock::now();
+    std::ofstream outfile("global_pre_graph.txt");
+    for(int filter_price = 0; filter_price <= 100000; filter_price += 100) {
+        total_scan_time = 0;
+        for (int i = 0; i < queries.size(0); i++) {
+            search_params->filter_value = arrow::Datum(filter_price);
+            auto result = index_->search(queries[i].unsqueeze(0), search_params);
+            total_scan_time += result->timing_info->scan_time_ns;
+            total_filter_time += result->timing_info->filter_time_ns;
+        }
+        // std::cout << "Filter Value: " << filter_price << std::endl;
+        // std::cout << "Scan Time" << total_scan_time/1000000 << " ms" << std::endl;
+        // std::cout<< total_scan_time / 1000000 << std::endl;
+        outfile << total_scan_time/1000000 << std::endl;
+    }
+    outfile.close();
+    auto end = high_resolution_clock::now();
+    auto elapsed = duration_cast<milliseconds>(end - start).count();
+
+    ASSERT_GT(elapsed, 0);
+}
+
+TEST_F(QuakeSerialFlatBenchmark, GraphForGlobalPost) {
+    // Force "serial_scan" by disabling batched_scan
+    Tensor queries = generate_data(100, DIM);
+    auto search_params = std::make_shared<SearchParams>();
+    search_params->k = 10;
+    search_params->recall_target = 0.9;  // not used for flat index
+    search_params->batched_scan = false;
+    
+    search_params->filter_column = "price";
+    search_params->filter_name = "less_equal";
+    
+    search_params->filteringType = FilteringType::GLOBAL_POST_FILTERING;
+    auto total_scan_time = 0;
+    auto total_filter_time = 0;
+
+    auto start = high_resolution_clock::now();
+    std::ofstream outfile("global_post_graph.txt");
+    for(int filter_price = 0; filter_price <= 100000; filter_price += 100) {
+        total_scan_time = 0;
+        for (int i = 0; i < queries.size(0); i++) {
+            search_params->filter_value = arrow::Datum(filter_price);
+            auto result = index_->search(queries[i].unsqueeze(0), search_params);
+            total_scan_time += result->timing_info->scan_time_ns;
+            total_filter_time += result->timing_info->filter_time_ns;
+        }
+        // std::cout << "Filter Value: " << filter_price << std::endl;
+        // std::cout << "Scan Time" << total_scan_time/1000000 << " ms" << std::endl;
+        // std::cout<< total_scan_time / 1000000 << std::endl;
+        outfile << total_scan_time/1000000 << std::endl;
+    }
+    outfile.close();
+    auto end = high_resolution_clock::now();
+    auto elapsed = duration_cast<milliseconds>(end - start).count();
+
+    ASSERT_GT(elapsed, 0);
+}
 
 TEST_F(QuakeSerialFlatBenchmark, Search_Without_Filtering) {
     Tensor queries = generate_data(NUM_QUERIES, DIM);

@@ -588,8 +588,8 @@ void filter_out_vectors_globally(
 }
 
 void populate_global_filtered_ids_list(
-                        const std::shared_ptr<arrow::Table> global_attributes_table_, 
-                        std::unordered_set<int64_t> &filtered_vector_ids_list, 
+                        const std::shared_ptr<arrow::Table> global_attributes_table_,
+                        std::unordered_set<int64_t> &filtered_vector_ids_list,
                         string &filter_name,
                         string &filter_column,
                         arrow::Datum &filter_value) {
