@@ -253,7 +253,7 @@ TEST_F(QuakeSerialFlatBenchmark, GraphForLocalPre) {
             total_filter_time += result->timing_info->filter_time_ns;
             total_time_ns += result->timing_info->total_time_ns;
         }
-        std::cout << "Average Filter Time: " << total_filter_time/queries.size(0) << std::endl;
+        std::cout << "Average Filter Time: " << total_filter_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Scan Time" << total_scan_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Lantency Time" << total_time_ns/(queries.size(0)*1000000) << " ms" << std::endl << std::endl;
         // std::cout<< total_scan_time / 1000000 << std::endl;
@@ -294,7 +294,7 @@ TEST_F(QuakeSerialFlatBenchmark, GraphForLocalPost) {
             total_scan_time += result->timing_info->scan_time_ns;
             total_filter_time += result->timing_info->filter_time_ns;
         }
-        std::cout << "Average Filter Time: " << total_filter_time/queries.size(0) << std::endl;
+        std::cout << "Average Filter Time: " << total_filter_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Scan Time" << total_scan_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Lantency Time" << total_time_ns/(queries.size(0)*1000000) << " ms" << std::endl << std::endl;
         outfile << total_scan_time/1000000 << std::endl;
@@ -334,7 +334,7 @@ TEST_F(QuakeSerialFlatBenchmarkGlobalBuild, GraphForBruteForce) {
             total_scan_time += result->timing_info->scan_time_ns;
             total_filter_time += result->timing_info->filter_time_ns;
         }
-        std::cout << "Average Filter Time: " << total_filter_time/queries.size(0) << std::endl;
+        std::cout << "Average Filter Time: " << total_filter_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Scan Time" << total_scan_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Lantency Time" << total_time_ns/(queries.size(0)*1000000) << " ms" << std::endl << std::endl;
         outfile << total_scan_time/1000000 << std::endl;
@@ -375,7 +375,7 @@ TEST_F(QuakeSerialFlatBenchmarkGlobalBuild, GraphForGlobalPre) {
             total_scan_time += result->timing_info->scan_time_ns;
             total_filter_time += result->timing_info->filter_time_ns;
         }
-        std::cout << "Average Filter Time: " << total_filter_time/queries.size(0) << std::endl;
+        std::cout << "Average Filter Time: " << total_filter_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Scan Time" << total_scan_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Lantency Time" << total_time_ns/(queries.size(0)*1000000) << " ms" << std::endl << std::endl;
         outfile << total_scan_time/1000000 << std::endl;
@@ -416,7 +416,7 @@ TEST_F(QuakeSerialFlatBenchmarkGlobalBuild, GraphForGlobalPost) {
             total_scan_time += result->timing_info->scan_time_ns;
             total_filter_time += result->timing_info->filter_time_ns;
         }
-        std::cout << "Average Filter Time: " << total_filter_time/queries.size(0) << std::endl;
+        std::cout << "Average Filter Time: " << total_filter_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Scan Time" << total_scan_time/(queries.size(0)*1000000) << " ms" << std::endl;
         std::cout << "Average Lantency Time" << total_time_ns/(queries.size(0)*1000000) << " ms" << std::endl << std::endl;
         outfile << total_scan_time/1000000 << std::endl;
