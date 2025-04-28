@@ -93,6 +93,7 @@ protected:
         auto build_params = std::make_shared<IndexBuildParams>();
         build_params->nlist = 1;      // flat index
         build_params->metric = "l2";
+        build_params->use_global_attributes_table = false;
         
         // Uncomment this to run the test for global filters and brute force
         // build_params->use_global_attributes_table = true;
